@@ -1,0 +1,18 @@
+[build]
+  command = "pnpm install && pnpm build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[functions]
+  directory = "dist"
+  node_bundler = "esbuild"
+

@@ -1,15 +1,16 @@
 import { eq, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, users, colaboradores, Colaborador, InsertColaborador, relatorios, Relatorio, InsertRelatorio } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL, { ssl: 'prefer' });
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -68,7 +69,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -107,10 +109,8 @@ export async function getColaboradorById(id: number): Promise<Colaborador | unde
 export async function createColaborador(data: InsertColaborador): Promise<Colaborador> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(colaboradores).values(data);
-  const created = await getColaboradorById(Number(result[0].insertId));
-  if (!created) throw new Error("Failed to create colaborador");
-  return created;
+  const result = await db.insert(colaboradores).values(data).returning();
+  return result[0];
 }
 
 export async function updateColaborador(id: number, data: Partial<InsertColaborador>): Promise<void> {
@@ -143,10 +143,8 @@ export async function getRelatorioById(id: number): Promise<Relatorio | undefine
 export async function createRelatorio(data: InsertRelatorio): Promise<Relatorio> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(relatorios).values(data);
-  const created = await getRelatorioById(Number(result[0].insertId));
-  if (!created) throw new Error("Failed to create relatorio");
-  return created;
+  const result = await db.insert(relatorios).values(data).returning();
+  return result[0];
 }
 
 export async function deleteRelatorio(id: number): Promise<void> {

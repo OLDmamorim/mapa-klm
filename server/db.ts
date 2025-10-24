@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, colaboradores, Colaborador, InsertColaborador, relatorios, Relatorio, InsertRelatorio } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,69 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ===== Colaboradores =====
+
+export async function getAllColaboradores(): Promise<Colaborador[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(colaboradores);
+}
+
+export async function getColaboradorById(id: number): Promise<Colaborador | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(colaboradores).where(eq(colaboradores.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createColaborador(data: InsertColaborador): Promise<Colaborador> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(colaboradores).values(data);
+  const created = await getColaboradorById(Number(result[0].insertId));
+  if (!created) throw new Error("Failed to create colaborador");
+  return created;
+}
+
+export async function updateColaborador(id: number, data: Partial<InsertColaborador>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(colaboradores).set(data).where(eq(colaboradores.id, id));
+}
+
+export async function deleteColaborador(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(colaboradores).where(eq(colaboradores.id, id));
+}
+
+// ===== Relatórios =====
+
+export async function getAllRelatorios(): Promise<Relatorio[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(relatorios).orderBy(desc(relatorios.createdAt));
+}
+
+export async function getRelatorioById(id: number): Promise<Relatorio | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(relatorios).where(eq(relatorios.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createRelatorio(data: InsertRelatorio): Promise<Relatorio> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(relatorios).values(data);
+  const created = await getRelatorioById(Number(result[0].insertId));
+  if (!created) throw new Error("Failed to create relatorio");
+  return created;
+}
+
+export async function deleteRelatorio(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(relatorios).where(eq(relatorios.id, id));
+}
+
